@@ -8,7 +8,7 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   :root {
-    --work-color: #e8505b;
+    --work-color: #7c3aed;
     --break-color: #14a098;
     --accent: var(--work-color);
   }
@@ -17,6 +17,7 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     min-height: 100vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     background: #1a1a2e;
@@ -24,8 +25,20 @@
     transition: background 0.5s ease;
   }
 
-  body.work  { background: radial-gradient(circle at top, #3a1f2b, #1a1a2e); }
+  body.work  { background: radial-gradient(circle at top, #2a1f3a, #1a1a2e); }
   body.break { background: radial-gradient(circle at top, #173a38, #1a1a2e); }
+
+  .page-title {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-align: center;
+    margin: 20px 20px 4px;
+    background: linear-gradient(90deg, var(--accent), #c4b5fd);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
 
   .card {
     width: 100%;
@@ -146,6 +159,7 @@
 </style>
 </head>
 <body class="work">
+  <h1 class="page-title">Kalel's Focus Timer</h1>
   <div class="card">
     <h1>🍅 Pomodoro Timer</h1>
 
@@ -172,7 +186,7 @@
   "use strict";
 
   const DURATIONS = { work: 25 * 60, break: 5 * 60 };
-  const COLORS    = { work: "#e8505b", break: "#14a098" };
+  const COLORS    = { work: "#7c3aed", break: "#14a098" };
 
   let mode       = "work";
   let remaining  = DURATIONS[mode];
