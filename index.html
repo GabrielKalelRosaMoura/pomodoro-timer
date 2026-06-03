@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pomodoro Timer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --work-color: #e8505b;
+    --break-color: #14a098;
+    --accent: var(--work-color);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1a2e;
+    color: #f5f5f5;
+    transition: background 0.5s ease;
+  }
+
+  body.work  { background: radial-gradient(circle at top, #3a1f2b, #1a1a2e); }
+  body.break { background: radial-gradient(circle at top, #173a38, #1a1a2e); }
+
+  .card {
+    width: 100%;
+    max-width: 420px;
+    margin: 20px;
+    padding: 40px 32px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    text-align: center;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 28px;
+    opacity: 0.9;
+  }
+
+  .modes {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 32px;
+    background: rgba(0, 0, 0, 0.25);
+    padding: 6px;
+    border-radius: 14px;
+  }
+
+  .mode-btn {
+    flex: 1;
+    padding: 12px 0;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #f5f5f5;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.25s ease, transform 0.1s ease;
+  }
+
+  .mode-btn.active { background: var(--accent); }
+  .mode-btn:not(.active):hover { background: rgba(255, 255, 255, 0.08); }
+
+  .display {
+    font-size: 6rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+  }
+
+  .status {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.6;
+    margin-bottom: 32px;
+    min-height: 1.2em;
+  }
+
+  .progress {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+
+  .progress-bar {
+    height: 100%;
+    width: 100%;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width 1s linear, background 0.5s ease;
+  }
+
+  .controls {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .controls button {
+    flex: 1;
+    padding: 16px 0;
+    border: none;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s ease, opacity 0.2s ease, background 0.2s ease;
+  }
+
+  .controls button:active { transform: scale(0.96); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #f5f5f5;
+  }
+  .btn-secondary:hover { background: rgba(255, 255, 255, 0.18); }
+
+  .btn-secondary:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+</style>
+</head>
+<body class="work">
+  <div class="card">
+    <h1>🍅 Pomodoro Timer</h1>
+
+    <div class="modes">
+      <button class="mode-btn active" data-mode="work">Work · 25m</button>
+      <button class="mode-btn" data-mode="break">Break · 5m</button>
+    </div>
+
+    <div class="display" id="display">25:00</div>
+    <div class="status" id="status">Ready</div>
+
+    <div class="progress">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="controls">
+      <button class="btn-primary" id="startPause">Start</button>
+      <button class="btn-secondary" id="reset" disabled>Reset</button>
+    </div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  const DURATIONS = { work: 25 * 60, break: 5 * 60 };
+  const COLORS    = { work: "#e8505b", break: "#14a098" };
+
+  let mode       = "work";
+  let remaining  = DURATIONS[mode];
+  let running    = false;
+  let intervalId = null;
+
+  const displayEl  = document.getElementById("display");
+  const statusEl   = document.getElementById("status");
+  const progressEl = document.getElementById("progressBar");
+  const startBtn   = document.getElementById("startPause");
+  const resetBtn   = document.getElementById("reset");
+  const modeBtns   = document.querySelectorAll(".mode-btn");
+
+  function format(seconds) {
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return m + ":" + s;
+  }
+
+  function render() {
+    displayEl.textContent = format(remaining);
+    document.title = format(remaining) + " · " + (mode === "work" ? "Work" : "Break");
+    const pct = (remaining / DURATIONS[mode]) * 100;
+    progressEl.style.width = pct + "%";
+  }
+
+  function setMode(newMode) {
+    mode = newMode;
+    document.documentElement.style.setProperty("--accent", COLORS[mode]);
+    document.body.className = mode;
+    progressEl.style.background = COLORS[mode];
+    modeBtns.forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
+    stop();
+    remaining = DURATIONS[mode];
+    statusEl.textContent = "Ready";
+    render();
+  }
+
+  function tick() {
+    remaining--;
+    render();
+    if (remaining <= 0) {
+      stop();
+      statusEl.textContent = "Time's up!";
+      notify();
+    }
+  }
+
+  function start() {
+    if (running || remaining <= 0) return;
+    running = true;
+    startBtn.textContent = "Pause";
+    resetBtn.disabled = false;
+    statusEl.textContent = mode === "work" ? "Focus" : "Relax";
+    intervalId = setInterval(tick, 1000);
+  }
+
+  function pause() {
+    running = false;
+    startBtn.textContent = "Start";
+    statusEl.textContent = "Paused";
+    clearInterval(intervalId);
+  }
+
+  function stop() {
+    running = false;
+    startBtn.textContent = "Start";
+    clearInterval(intervalId);
+    intervalId = null;
+  }
+
+  function reset() {
+    stop();
+    remaining = DURATIONS[mode];
+    resetBtn.disabled = true;
+    statusEl.textContent = "Ready";
+    render();
+  }
+
+  function notify() {
+    // A short beep using the Web Audio API — no external files needed.
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.6);
+    } catch (e) { /* audio not available — ignore */ }
+  }
+
+  startBtn.addEventListener("click", function () {
+    running ? pause() : start();
+  });
+
+  resetBtn.addEventListener("click", reset);
+
+  modeBtns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      setMode(btn.dataset.mode);
+    });
+  });
+
+  // Spacebar toggles start/pause.
+  document.addEventListener("keydown", function (e) {
+    if (e.code === "Space") {
+      e.preventDefault();
+      running ? pause() : start();
+    }
+  });
+
+  setMode("work");
+})();
+</script>
+</body>
+</html>
